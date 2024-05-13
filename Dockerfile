@@ -4,10 +4,10 @@ MAINTAINER siddontang
 
 RUN apk add --no-cache tini mariadb-client
 
-ADD . /go/src/github.com/siddontang/go-mysql-elasticsearch
+ADD . /go/src/go-mysql-es
 
 RUN apk add --no-cache mariadb-client
-RUN cd /go/src/github.com/siddontang/go-mysql-elasticsearch/ && \
+RUN cd /go/src/go-mysql-es/ && \
     go build -o bin/go-mysql-elasticsearch ./cmd/go-mysql-elasticsearch && \
     cp -f ./bin/go-mysql-elasticsearch /go/bin/go-mysql-elasticsearch
 

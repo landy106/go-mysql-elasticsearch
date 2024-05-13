@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-mysql-org/go-mysql/canal"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
-	"github.com/siddontang/go-mysql-elasticsearch/elastic"
-	"github.com/siddontang/go-mysql/canal"
+	"go-mysql-es/elastic"
 )
 
 // ErrRuleNotExist is the error if rule is not defined.
@@ -165,15 +165,15 @@ func (r *River) parseSource() (map[string][]string, error) {
 
 	// first, check sources
 	for _, s := range r.c.Sources {
+		if len(s.Schema) == 0 {
+			return nil, errors.Errorf("empty schema not allowed for source")
+		}
+
 		if !isValidTables(s.Tables) {
 			return nil, errors.Errorf("wildcard * is not allowed for multiple tables")
 		}
 
 		for _, table := range s.Tables {
-			if len(s.Schema) == 0 {
-				return nil, errors.Errorf("empty schema not allowed for source")
-			}
-
 			if regexp.QuoteMeta(table) != table {
 				if _, ok := wildTables[ruleKey(s.Schema, table)]; ok {
 					return nil, errors.Errorf("duplicate wildcard table defined for %s.%s", s.Schema, table)
