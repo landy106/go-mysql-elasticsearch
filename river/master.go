@@ -46,7 +46,7 @@ func loadMasterInfo(dataDir string) (*masterInfo, error) {
 	}
 	defer f.Close()
 
-	_, err = toml.DecodeReader(f, &m)
+	_, err = toml.NewDecoder(f).Decode(&m)
 	return &m, errors.Trace(err)
 }
 

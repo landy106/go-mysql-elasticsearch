@@ -99,14 +99,14 @@ func (s *riverTestSuite) SetUpSuite(c *C) {
 		&Rule{Schema: "test",
 			Table:        "test_river",
 			Index:        "river",
-			Type:         "river",
+			// Type:         "river",
 			FieldMapping: map[string]string{"title": "es_title", "mylist": "es_mylist,list", "mydate": ",date"},
 		},
 
 		&Rule{Schema: "test",
 			Table:        "test_for_id",
 			Index:        "river",
-			Type:         "river",
+			// Type:         "river",
 			ID:           []string{"id", "title"},
 			FieldMapping: map[string]string{"title": "es_title", "mylist": "es_mylist,list", "mydate": ",date"},
 		},
@@ -114,14 +114,14 @@ func (s *riverTestSuite) SetUpSuite(c *C) {
 		&Rule{Schema: "test",
 			Table:        "test_river_[0-9]{4}",
 			Index:        "river",
-			Type:         "river",
+			// Type:         "river",
 			FieldMapping: map[string]string{"title": "es_title", "mylist": "es_mylist,list", "mydate": ",date"},
 		},
 
 		&Rule{Schema: "test",
 			Table: "test_for_json",
 			Index: "river",
-			Type:  "river",
+			// Type:  "river",
 		},
 	}
 
@@ -239,9 +239,9 @@ func (s *riverTestSuite) testPrepareData(c *C) {
 
 func (s *riverTestSuite) testElasticGet(c *C, id string) *elastic.Response {
 	index := "river"
-	docType := "river"
 
-	r, err := s.r.es.Get(index, docType, id)
+
+	r, err := s.r.es.Get(index,  id)
 	c.Assert(err, IsNil)
 
 	return r
@@ -251,7 +251,7 @@ func (s *riverTestSuite) testElasticMapping(c *C) *elastic.MappingResponse {
 	index := "river"
 	docType := "river"
 
-	r, err := s.r.es.GetMapping(index, docType)
+	r, err := s.r.es.GetMapping(index)
 	c.Assert(err, IsNil)
 
 	c.Assert(r.Mapping[index].Mappings[docType].Properties["tdatetime"].Type, Equals, "date")
@@ -284,8 +284,7 @@ func (s *riverTestSuite) TestRiver(c *C) {
 
 	testWaitSyncDone(c, s.r)
 
-	var mr *elastic.MappingResponse
-	mr = s.testElasticMapping(c)
+	var mr *elastic.MappingResponse  = s.testElasticMapping(c)
 	c.Assert(mr.Code, Equals, 200)
 
 	var r *elastic.Response

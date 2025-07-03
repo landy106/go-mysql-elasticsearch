@@ -59,11 +59,12 @@ func (s *riverTestSuite) setupExtra(c *C) (r *River) {
 		&Rule{Schema: "test",
 			Table: "test_river_parent",
 			Index: "river",
-			Type:  "river_extra_parent"},
+			// Type:  "river_extra_parent",
+		},
 		&Rule{Schema: "test",
 			Table:  "test_river_extra",
 			Index:  "river",
-			Type:   "river_extra",
+			// Type:   "river_extra",
 			Parent: "pid"}}
 
 	r, err = NewRiver(cfg)
@@ -75,7 +76,7 @@ func (s *riverTestSuite) setupExtra(c *C) (r *River) {
 		},
 	}
 
-	r.es.CreateMapping("river", "river_extra", mapping)
+	r.es.CreateMapping("river",  mapping)
 
 	return r
 }

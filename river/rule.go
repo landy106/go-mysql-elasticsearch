@@ -1,6 +1,7 @@
 package river
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/go-mysql-org/go-mysql/schema"
@@ -14,7 +15,7 @@ type Rule struct {
 	Schema string   `toml:"schema"`
 	Table  string   `toml:"table"`
 	Index  string   `toml:"index"`
-	Type   string   `toml:"type"`
+	// Type   string   `toml:"type"`
 	Parent string   `toml:"parent"`
 	ID     []string `toml:"id"`
 
@@ -42,7 +43,7 @@ func newDefaultRule(schema string, table string) *Rule {
 
 	lowerTable := strings.ToLower(table)
 	r.Index = lowerTable
-	r.Type = lowerTable
+	// r.Type = lowerTable
 
 	r.FieldMapping = make(map[string]string)
 
@@ -58,14 +59,14 @@ func (r *Rule) prepare() error {
 		r.Index = r.Table
 	}
 
-	if len(r.Type) == 0 {
-		r.Type = r.Index
-	}
+	// if len(r.Type) == 0 {
+	// 	r.Type = r.Index
+	// }
 
 	// ES must use a lower-case Type
 	// Here we also use for Index
 	r.Index = strings.ToLower(r.Index)
-	r.Type = strings.ToLower(r.Type)
+	// r.Type = strings.ToLower(r.Type)
 
 	return nil
 }
@@ -76,10 +77,5 @@ func (r *Rule) CheckFilter(field string) bool {
 		return true
 	}
 
-	for _, f := range r.Filter {
-		if f == field {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(r.Filter, field)
 }
