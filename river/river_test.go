@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-mysql-org/go-mysql/client"
+	"github.com/go-mysql-org/go-mysql/mysql"
+	"github.com/landy106/go-mysql-elasticsearch/elastic"
 	. "github.com/pingcap/check"
-	"github.com/siddontang/go-mysql-elasticsearch/elastic"
-	"github.com/siddontang/go-mysql/client"
-	"github.com/siddontang/go-mysql/mysql"
 )
 
 var myAddr = flag.String("my_addr", "127.0.0.1:3306", "MySQL addr")
@@ -99,14 +99,14 @@ func (s *riverTestSuite) SetUpSuite(c *C) {
 		&Rule{Schema: "test",
 			Table:        "test_river",
 			Index:        "river",
-			Type:         "river",
+			
 			FieldMapping: map[string]string{"title": "es_title", "mylist": "es_mylist,list", "mydate": ",date"},
 		},
 
 		&Rule{Schema: "test",
 			Table:        "test_for_id",
 			Index:        "river",
-			Type:         "river",
+			
 			ID:           []string{"id", "title"},
 			FieldMapping: map[string]string{"title": "es_title", "mylist": "es_mylist,list", "mydate": ",date"},
 		},
@@ -114,14 +114,14 @@ func (s *riverTestSuite) SetUpSuite(c *C) {
 		&Rule{Schema: "test",
 			Table:        "test_river_[0-9]{4}",
 			Index:        "river",
-			Type:         "river",
+			
 			FieldMapping: map[string]string{"title": "es_title", "mylist": "es_mylist,list", "mydate": ",date"},
 		},
 
 		&Rule{Schema: "test",
 			Table: "test_for_json",
 			Index: "river",
-			Type:  "river",
+			
 		},
 	}
 
@@ -239,9 +239,9 @@ func (s *riverTestSuite) testPrepareData(c *C) {
 
 func (s *riverTestSuite) testElasticGet(c *C, id string) *elastic.Response {
 	index := "river"
-	docType := "river"
+	
 
-	r, err := s.r.es.Get(index, docType, id)
+	r, err := s.r.es.Get(index,  id)
 	c.Assert(err, IsNil)
 
 	return r
@@ -249,14 +249,14 @@ func (s *riverTestSuite) testElasticGet(c *C, id string) *elastic.Response {
 
 func (s *riverTestSuite) testElasticMapping(c *C) *elastic.MappingResponse {
 	index := "river"
-	docType := "river"
 
-	r, err := s.r.es.GetMapping(index, docType)
+
+	r, err := s.r.es.GetMapping(index)
 	c.Assert(err, IsNil)
 
-	c.Assert(r.Mapping[index].Mappings[docType].Properties["tdatetime"].Type, Equals, "date")
-	c.Assert(r.Mapping[index].Mappings[docType].Properties["tdate"].Type, Equals, "date")
-	c.Assert(r.Mapping[index].Mappings[docType].Properties["mydate"].Type, Equals, "date")
+	c.Assert(r.Mapping[index].Mappings.Properties["tdatetime"].Type, Equals, "date")
+	c.Assert(r.Mapping[index].Mappings.Properties["tdate"].Type, Equals, "date")
+	c.Assert(r.Mapping[index].Mappings.Properties["mydate"].Type, Equals, "date")
 	return r
 }
 

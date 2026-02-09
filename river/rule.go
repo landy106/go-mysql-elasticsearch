@@ -3,7 +3,7 @@ package river
 import (
 	"strings"
 
-	"github.com/siddontang/go-mysql/schema"
+	"github.com/go-mysql-org/go-mysql/schema"
 )
 
 // Rule is the rule for how to sync data from MySQL to ES.
@@ -11,10 +11,10 @@ import (
 // The mapping rule may thi: schema + table <-> index + document type.
 // schema and table is for MySQL, index and document type is for Elasticsearch.
 type Rule struct {
-	Schema string   `toml:"schema"`
-	Table  string   `toml:"table"`
-	Index  string   `toml:"index"`
-	Type   string   `toml:"type"`
+	Schema string `toml:"schema"`
+	Table  string `toml:"table"`
+	Index  string `toml:"index"`
+	// Type   string   `toml:"type"`
 	Parent string   `toml:"parent"`
 	ID     []string `toml:"id"`
 
@@ -42,7 +42,6 @@ func newDefaultRule(schema string, table string) *Rule {
 
 	lowerTable := strings.ToLower(table)
 	r.Index = lowerTable
-	r.Type = lowerTable
 
 	r.FieldMapping = make(map[string]string)
 
@@ -58,14 +57,9 @@ func (r *Rule) prepare() error {
 		r.Index = r.Table
 	}
 
-	if len(r.Type) == 0 {
-		r.Type = r.Index
-	}
-
 	// ES must use a lower-case Type
 	// Here we also use for Index
 	r.Index = strings.ToLower(r.Index)
-	r.Type = strings.ToLower(r.Type)
 
 	return nil
 }

@@ -14,8 +14,8 @@ The reason why you can improve go-mysql-elasticsearch.
 ## Install
 
 + Install Go (1.9+) and set your [GOPATH](https://golang.org/doc/code.html#GOPATH)
-+ `go get github.com/siddontang/go-mysql-elasticsearch`, it will print some messages in console, skip it. :-)
-+ cd `$GOPATH/src/github.com/siddontang/go-mysql-elasticsearch`
++ `go get github.com/landy106/go-mysql-elasticsearch`, it will print some messages in console, skip it. :-)
++ cd `$GOPATH/src/github.com/landy106/go-mysql-elasticsearch`
 + `make`
 
 ## How to use?
@@ -82,7 +82,6 @@ Rule can let you change this name mapping. Rule format in config file is below:
 schema = "test"
 table = "t1"
 index = "t"
-type = "t"
 parent = "parent_id"
 id = ["id"]
 
@@ -135,7 +134,6 @@ tables = ["test_river_[0-9]{4}"]
 schema = "test"
 table = "test_river_[0-9]{4}"
 index = "river"
-type = "river"
 ```
 
 "test_river_[0-9]{4}" is a wildcard table definition, which represents "test_river_0000" to "test_river_9999", at the same time, the table in the rule must be same as it.
@@ -151,7 +149,6 @@ One-to-many join ( [parent-child relationship](https://www.elastic.co/guide/en/e
 schema = "test"
 table = "t1"
 index = "t"
-type = "t"
 parent = "parent_id"
 ```
 
@@ -166,7 +163,6 @@ You can use `filter` to sync specified fields, like:
 schema = "test"
 table = "tfilter"
 index = "test"
-type = "tfilter"
 
 # Only sync following columns
 filter = ["id", "name"]
@@ -193,7 +189,6 @@ You can use [Ingest Node Pipeline](https://www.elastic.co/guide/en/elasticsearch
 schema = "test"
 table = "t1"
 index = "t"
-type = "_doc"
 
 # pipeline id
 pipeline = "my-pipeline-id"
@@ -209,11 +204,6 @@ Although there are some other MySQL rivers for Elasticsearch, like [elasticsearc
 + A common sync framework not only for Elasticsearch but also for others, like memcached, redis, etc...
 + Wildcard tables support, we have many sub tables like table_0000 - table_1023, but want use a unique Elasticsearch index and type.
 
-## Todo
-
-+ MySQL 8
-+ ES 6
-+ Statistic.
 
 ## Donate
 

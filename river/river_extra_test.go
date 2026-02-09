@@ -58,24 +58,22 @@ func (s *riverTestSuite) setupExtra(c *C) (r *River) {
 	cfg.Rules = []*Rule{
 		&Rule{Schema: "test",
 			Table: "test_river_parent",
-			Index: "river",
-			Type:  "river_extra_parent"},
+			Index: "river"},
 		&Rule{Schema: "test",
 			Table:  "test_river_extra",
 			Index:  "river",
-			Type:   "river_extra",
 			Parent: "pid"}}
 
 	r, err = NewRiver(cfg)
 	c.Assert(err, IsNil)
 
-	mapping := map[string]interface{}{
-		"river_extra": map[string]interface{}{
+	mapping := map[string]any{
+		"river_extra": map[string]any{
 			"_parent": map[string]string{"type": "river_extra_parent"},
 		},
 	}
 
-	r.es.CreateMapping("river", "river_extra", mapping)
+	r.es.CreateMapping("river",  mapping)
 
 	return r
 }

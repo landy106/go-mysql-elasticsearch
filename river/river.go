@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-mysql-org/go-mysql/canal"
 	"github.com/juju/errors"
+	"github.com/landy106/go-mysql-elasticsearch/elastic"
 	"github.com/siddontang/go-log/log"
-	"github.com/siddontang/go-mysql-elasticsearch/elastic"
-	"github.com/siddontang/go-mysql/canal"
 )
 
 // ErrRuleNotExist is the error if rule is not defined.
@@ -35,7 +35,7 @@ type River struct {
 
 	master *masterInfo
 
-	syncCh chan interface{}
+	syncCh chan any
 }
 
 // NewRiver creates the River from config
@@ -245,7 +245,7 @@ func (r *River) prepareRule() error {
 				for _, table := range tables {
 					rr := r.rules[ruleKey(rule.Schema, table)]
 					rr.Index = rule.Index
-					rr.Type = rule.Type
+					
 					rr.Parent = rule.Parent
 					rr.ID = rule.ID
 					rr.FieldMapping = rule.FieldMapping

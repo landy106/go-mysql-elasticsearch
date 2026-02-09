@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-mysql-org/go-mysql/canal"
+	"github.com/go-mysql-org/go-mysql/mysql"
+	"github.com/go-mysql-org/go-mysql/replication"
+	"github.com/go-mysql-org/go-mysql/schema"
 	"github.com/juju/errors"
+	"github.com/landy106/go-mysql-elasticsearch/elastic"
 	"github.com/siddontang/go-log/log"
-	"github.com/siddontang/go-mysql-elasticsearch/elastic"
-	"github.com/siddontang/go-mysql/canal"
-	"github.com/siddontang/go-mysql/mysql"
-	"github.com/siddontang/go-mysql/replication"
-	"github.com/siddontang/go-mysql/schema"
 )
 
 const (
@@ -35,7 +35,7 @@ type eventHandler struct {
 	r *River
 }
 
-func (h *eventHandler) OnRotate(e *replication.RotateEvent) error {
+func (h *eventHandler) OnRotate(header *replication.EventHeader, e *replication.RotateEvent) error {
 	pos := mysql.Position{
 		Name: string(e.NextLogName),
 		Pos:  uint32(e.Position),
@@ -46,7 +46,7 @@ func (h *eventHandler) OnRotate(e *replication.RotateEvent) error {
 	return h.r.ctx.Err()
 }
 
-func (h *eventHandler) OnTableChanged(schema, table string) error {
+func (h *eventHandler) OnTableChanged(header *replication.EventHeader, schema, table string) error {
 	err := h.r.updateRule(schema, table)
 	if err != nil && err != ErrRuleNotExist {
 		return errors.Trace(err)
@@ -54,12 +54,12 @@ func (h *eventHandler) OnTableChanged(schema, table string) error {
 	return nil
 }
 
-func (h *eventHandler) OnDDL(nextPos mysql.Position, _ *replication.QueryEvent) error {
+func (h *eventHandler) OnDDL(header *replication.EventHeader, nextPos mysql.Position, _ *replication.QueryEvent) error {
 	h.r.syncCh <- posSaver{nextPos, true}
 	return h.r.ctx.Err()
 }
 
-func (h *eventHandler) OnXID(nextPos mysql.Position) error {
+func (h *eventHandler) OnXID(header *replication.EventHeader, nextPos mysql.Position) error {
 	h.r.syncCh <- posSaver{nextPos, false}
 	return h.r.ctx.Err()
 }
@@ -93,11 +93,15 @@ func (h *eventHandler) OnRow(e *canal.RowsEvent) error {
 	return h.r.ctx.Err()
 }
 
-func (h *eventHandler) OnGTID(gtid mysql.GTIDSet) error {
+func (h *eventHandler) OnGTID(header *replication.EventHeader, gtidEvent mysql.BinlogGTIDEvent) error {
 	return nil
 }
 
-func (h *eventHandler) OnPosSynced(pos mysql.Position, set mysql.GTIDSet, force bool) error {
+func (h *eventHandler) OnPosSynced(_ *replication.EventHeader, pos mysql.Position, set mysql.GTIDSet, force bool) error {
+	return nil
+}
+
+func (h *eventHandler) OnRowsQueryEvent(header *replication.RowsQueryEvent) error {
 	return nil
 }
 
@@ -187,7 +191,7 @@ func (r *River) makeRequest(rule *Rule, action string, rows [][]interface{}) ([]
 			}
 		}
 
-		req := &elastic.BulkRequest{Index: rule.Index, Type: rule.Type, ID: id, Parent: parentID, Pipeline: rule.Pipeline}
+		req := &elastic.BulkRequest{Index: rule.Index, ID: id, Parent: parentID, Pipeline: rule.Pipeline}
 
 		if action == canal.DeleteAction {
 			req.Action = elastic.ActionDelete
@@ -240,13 +244,13 @@ func (r *River) makeUpdateRequest(rule *Rule, rows [][]interface{}) ([]*elastic.
 			}
 		}
 
-		req := &elastic.BulkRequest{Index: rule.Index, Type: rule.Type, ID: beforeID, Parent: beforeParentID}
+		req := &elastic.BulkRequest{Index: rule.Index, ID: beforeID, Parent: beforeParentID}
 
 		if beforeID != afterID || beforeParentID != afterParentID {
 			req.Action = elastic.ActionDelete
 			reqs = append(reqs, req)
 
-			req = &elastic.BulkRequest{Index: rule.Index, Type: rule.Type, ID: afterID, Parent: afterParentID, Pipeline: rule.Pipeline}
+			req = &elastic.BulkRequest{Index: rule.Index, ID: afterID, Parent: afterParentID, Pipeline: rule.Pipeline}
 			r.makeInsertReqData(req, rule, rows[i+1])
 
 			esDeleteNum.WithLabelValues(rule.Index).Inc()
