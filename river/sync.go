@@ -175,7 +175,7 @@ func (r *River) syncLoop() {
 }
 
 // for insert and delete
-func (r *River) makeRequest(rule *Rule, action string, rows [][]interface{}) ([]*elastic.BulkRequest, error) {
+func (r *River) makeRequest(rule *Rule, action string, rows [][]any) ([]*elastic.BulkRequest, error) {
 	reqs := make([]*elastic.BulkRequest, 0, len(rows))
 
 	for _, values := range rows {
@@ -191,7 +191,12 @@ func (r *River) makeRequest(rule *Rule, action string, rows [][]interface{}) ([]
 			}
 		}
 
-		req := &elastic.BulkRequest{Index: rule.Index, ID: id, Parent: parentID, Pipeline: rule.Pipeline}
+		req := &elastic.BulkRequest{
+			Index: rule.Index, 
+			ID: id, 
+			Parent: parentID, 
+			Pipeline: rule.Pipeline,
+		}
 
 		if action == canal.DeleteAction {
 			req.Action = elastic.ActionDelete
@@ -207,15 +212,15 @@ func (r *River) makeRequest(rule *Rule, action string, rows [][]interface{}) ([]
 	return reqs, nil
 }
 
-func (r *River) makeInsertRequest(rule *Rule, rows [][]interface{}) ([]*elastic.BulkRequest, error) {
+func (r *River) makeInsertRequest(rule *Rule, rows [][]any) ([]*elastic.BulkRequest, error) {
 	return r.makeRequest(rule, canal.InsertAction, rows)
 }
 
-func (r *River) makeDeleteRequest(rule *Rule, rows [][]interface{}) ([]*elastic.BulkRequest, error) {
+func (r *River) makeDeleteRequest(rule *Rule, rows [][]any) ([]*elastic.BulkRequest, error) {
 	return r.makeRequest(rule, canal.DeleteAction, rows)
 }
 
-func (r *River) makeUpdateRequest(rule *Rule, rows [][]interface{}) ([]*elastic.BulkRequest, error) {
+func (r *River) makeUpdateRequest(rule *Rule, rows [][]any) ([]*elastic.BulkRequest, error) {
 	if len(rows)%2 != 0 {
 		return nil, errors.Errorf("invalid update rows event, must have 2x rows, but %d", len(rows))
 	}
@@ -274,7 +279,7 @@ func (r *River) makeUpdateRequest(rule *Rule, rows [][]interface{}) ([]*elastic.
 	return reqs, nil
 }
 
-func (r *River) makeReqColumnData(col *schema.TableColumn, value interface{}) interface{} {
+func (r *River) makeReqColumnData(col *schema.TableColumn, value any) any {
 	switch col.Type {
 	case schema.TYPE_ENUM:
 		switch value := value.(type) {
@@ -319,7 +324,7 @@ func (r *River) makeReqColumnData(col *schema.TableColumn, value interface{}) in
 			return string(value[:])
 		}
 	case schema.TYPE_JSON:
-		var f interface{}
+		var f any
 		var err error
 		switch v := value.(type) {
 		case string:
@@ -370,8 +375,8 @@ func (r *River) getFieldParts(k string, v string) (string, string, string) {
 	return mysql, elastic, fieldType
 }
 
-func (r *River) makeInsertReqData(req *elastic.BulkRequest, rule *Rule, values []interface{}) {
-	req.Data = make(map[string]interface{}, len(values))
+func (r *River) makeInsertReqData(req *elastic.BulkRequest, rule *Rule, values []any) {
+	req.Data = make(map[string]any, len(values))
 	req.Action = elastic.ActionIndex
 
 	for i, c := range rule.TableInfo.Columns {
@@ -393,8 +398,8 @@ func (r *River) makeInsertReqData(req *elastic.BulkRequest, rule *Rule, values [
 }
 
 func (r *River) makeUpdateReqData(req *elastic.BulkRequest, rule *Rule,
-	beforeValues []interface{}, afterValues []interface{}) {
-	req.Data = make(map[string]interface{}, len(beforeValues))
+	beforeValues []any, afterValues []any) {
+	req.Data = make(map[string]any, len(beforeValues))
 
 	// maybe dangerous if something wrong delete before?
 	req.Action = elastic.ActionUpdate
@@ -424,9 +429,9 @@ func (r *River) makeUpdateReqData(req *elastic.BulkRequest, rule *Rule,
 
 // If id in toml file is none, get primary keys in one row and format them into a string, and PK must not be nil
 // Else get the ID's column in one row and format them into a string
-func (r *River) getDocID(rule *Rule, row []interface{}) (string, error) {
+func (r *River) getDocID(rule *Rule, row []any) (string, error) {
 	var (
-		ids []interface{}
+		ids []any
 		err error
 	)
 	if rule.ID == nil {
@@ -435,7 +440,7 @@ func (r *River) getDocID(rule *Rule, row []interface{}) (string, error) {
 			return "", err
 		}
 	} else {
-		ids = make([]interface{}, 0, len(rule.ID))
+		ids = make([]any, 0, len(rule.ID))
 		for _, column := range rule.ID {
 			value, err := rule.TableInfo.GetColumnValue(column, row)
 			if err != nil {
@@ -453,14 +458,14 @@ func (r *River) getDocID(rule *Rule, row []interface{}) (string, error) {
 			return "", errors.Errorf("The %ds id or PK value is nil", i)
 		}
 
-		buf.WriteString(fmt.Sprintf("%s%v", sep, value))
+		fmt.Fprintf(&buf, "%s%v", sep, value)
 		sep = ":"
 	}
 
 	return buf.String(), nil
 }
 
-func (r *River) getParentID(rule *Rule, row []interface{}, columnName string) (string, error) {
+func (r *River) getParentID(rule *Rule, row []any, columnName string) (string, error) {
 	index := rule.TableInfo.FindColumn(columnName)
 	if index < 0 {
 		return "", errors.Errorf("parent id not found %s(%s)", rule.TableInfo.Name, columnName)
@@ -492,8 +497,8 @@ func (r *River) doBulk(reqs []*elastic.BulkRequest) error {
 }
 
 // get mysql field value and convert it to specific value to es
-func (r *River) getFieldValue(col *schema.TableColumn, fieldType string, value interface{}) interface{} {
-	var fieldValue interface{}
+func (r *River) getFieldValue(col *schema.TableColumn, fieldType string, value any) any {
+	var fieldValue any
 	switch fieldType {
 	case fieldTypeList:
 		v := r.makeReqColumnData(col, value)

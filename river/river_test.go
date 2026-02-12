@@ -97,31 +97,30 @@ func (s *riverTestSuite) SetUpSuite(c *C) {
 
 	cfg.Rules = []*Rule{
 		&Rule{Schema: "test",
-			Table:        "test_river",
-			Index:        "river",
-			
+			Table: "test_river",
+			Index: "river",
+
 			FieldMapping: map[string]string{"title": "es_title", "mylist": "es_mylist,list", "mydate": ",date"},
 		},
 
 		&Rule{Schema: "test",
-			Table:        "test_for_id",
-			Index:        "river",
-			
+			Table: "test_for_id",
+			Index: "river",
+
 			ID:           []string{"id", "title"},
 			FieldMapping: map[string]string{"title": "es_title", "mylist": "es_mylist,list", "mydate": ",date"},
 		},
 
 		&Rule{Schema: "test",
-			Table:        "test_river_[0-9]{4}",
-			Index:        "river",
-			
+			Table: "test_river_[0-9]{4}",
+			Index: "river",
+
 			FieldMapping: map[string]string{"title": "es_title", "mylist": "es_mylist,list", "mydate": ",date"},
 		},
 
 		&Rule{Schema: "test",
 			Table: "test_for_json",
 			Index: "river",
-			
 		},
 	}
 
@@ -209,7 +208,7 @@ type = "river"
 	c.Assert(cfg.Rules, HasLen, 4)
 }
 
-func (s *riverTestSuite) testExecute(c *C, query string, args ...interface{}) {
+func (s *riverTestSuite) testExecute(c *C, query string, args ...any) {
 	c.Logf("query %s, args: %v", query, args)
 	_, err := s.c.Execute(query, args...)
 	c.Assert(err, IsNil)
@@ -239,9 +238,8 @@ func (s *riverTestSuite) testPrepareData(c *C) {
 
 func (s *riverTestSuite) testElasticGet(c *C, id string) *elastic.Response {
 	index := "river"
-	
 
-	r, err := s.r.es.Get(index,  id)
+	r, err := s.r.es.Get(index, id)
 	c.Assert(err, IsNil)
 
 	return r
@@ -249,7 +247,6 @@ func (s *riverTestSuite) testElasticGet(c *C, id string) *elastic.Response {
 
 func (s *riverTestSuite) testElasticMapping(c *C) *elastic.MappingResponse {
 	index := "river"
-
 
 	r, err := s.r.es.GetMapping(index)
 	c.Assert(err, IsNil)
@@ -300,7 +297,7 @@ func (s *riverTestSuite) TestRiver(c *C) {
 	r = s.testElasticGet(c, "9200")
 	c.Assert(r.Found, IsTrue)
 	switch v := r.Source["info"].(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		c.Assert(v["first"], Equals, "a")
 		c.Assert(v["second"], Equals, "b")
 	default:
@@ -345,7 +342,7 @@ func (s *riverTestSuite) TestRiver(c *C) {
 	c.Assert(r.Source["es_title"], Equals, "second 2")
 	c.Assert(r.Source["tenum"], Equals, "e3")
 	c.Assert(r.Source["tset"], Equals, "a,b,c")
-	c.Assert(r.Source["es_mylist"], DeepEquals, []interface{}{"a", "b", "c"})
+	c.Assert(r.Source["es_mylist"], DeepEquals, []any{"a", "b", "c"})
 	c.Assert(r.Source["tbit"], Equals, float64(1))
 
 	r = s.testElasticGet(c, "4")

@@ -8,8 +8,8 @@ import (
 	"syscall"
 
 	"github.com/juju/errors"
-	"github.com/siddontang/go-log/log"
 	"github.com/landy106/go-mysql-elasticsearch/river"
+	"github.com/siddontang/go-log/log"
 )
 
 var configFile = flag.String("config", "./etc/river.toml", "go-mysql-elasticsearch config file")
@@ -31,7 +31,6 @@ func main() {
 
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc,
-		os.Kill,
 		os.Interrupt,
 		syscall.SIGHUP,
 		syscall.SIGINT,

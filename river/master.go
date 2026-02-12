@@ -2,6 +2,7 @@ package river
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path"
 	"sync"
@@ -11,7 +12,6 @@ import (
 	"github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/juju/errors"
 	"github.com/siddontang/go-log/log"
-	"github.com/siddontang/go/ioutil2"
 )
 
 type masterInfo struct {
@@ -71,12 +71,10 @@ func (m *masterInfo) Save(pos mysql.Position) error {
 
 	m.lastSaveTime = n
 	var buf bytes.Buffer
-	e := toml.NewEncoder(&buf)
-
-	e.Encode(m)
+	toml.NewEncoder(&buf).Encode(m)
 
 	var err error
-	if err = ioutil2.WriteFileAtomic(m.filePath, buf.Bytes(), 0644); err != nil {
+	if err = WriteFileAtomic(m.filePath, buf.Bytes(), 0644); err != nil {
 		log.Errorf("canal save master info to file %s err %v", m.filePath, err)
 	}
 
@@ -97,4 +95,28 @@ func (m *masterInfo) Close() error {
 	pos := m.Position()
 
 	return m.Save(pos)
+}
+
+// Write file to temp and atomically move when everything else succeeds.
+func WriteFileAtomic(filename string, data []byte, perm os.FileMode) error {
+	dir, name := path.Dir(filename), path.Base(filename)
+
+	f, err := os.CreateTemp(dir, name)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	n, err := f.Write(data)
+	if err == nil && n < len(data) {
+		err = io.ErrShortWrite
+	} else {
+		err = os.Chmod(f.Name(), perm)
+	}
+	if err != nil {
+		os.Remove(f.Name())
+		return err
+	}
+	
+	return os.Rename(f.Name(), filename)
 }

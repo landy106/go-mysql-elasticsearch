@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -44,7 +45,7 @@ func NewRiver(c *Config) (*River, error) {
 
 	r.c = c
 	r.rules = make(map[string]*Rule)
-	r.syncCh = make(chan interface{}, 4096)
+	r.syncCh = make(chan any, 4096)
 	r.ctx, r.cancel = context.WithCancel(context.Background())
 
 	var err error
@@ -245,7 +246,7 @@ func (r *River) prepareRule() error {
 				for _, table := range tables {
 					rr := r.rules[ruleKey(rule.Schema, table)]
 					rr.Index = rule.Index
-					
+
 					rr.Parent = rule.Parent
 					rr.ID = rule.ID
 					rr.FieldMapping = rule.FieldMapping
@@ -322,10 +323,8 @@ func (r *River) Close() {
 
 func isValidTables(tables []string) bool {
 	if len(tables) > 1 {
-		for _, table := range tables {
-			if table == "*" {
-				return false
-			}
+		if slices.Contains(tables, "*") {
+			return false
 		}
 	}
 	return true
