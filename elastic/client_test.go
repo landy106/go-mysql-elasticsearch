@@ -44,22 +44,22 @@ func makeTestData(arg1 string, arg2 string) map[string]any {
 func (s *elasticTestSuite) TestSimple(c *C) {
 	index := "dummy"
 
-	err := s.c.Index(index, "1", makeTestData("abc", "hello world"))
+	err := s.c.AddDocument(index, "1", makeTestData("abc", "hello world"))
 	c.Assert(err, IsNil)
 
-	exists, err := s.c.Exists(index, "1")
+	exists, err := s.c.HasDocument(index, "1")
 	c.Assert(err, IsNil)
 	c.Assert(exists, Equals, true)
 
-	r, err := s.c.Get(index, "1")
+	r, err := s.c.GetDocument(index, "1")
 	c.Assert(err, IsNil)
 	c.Assert(r.Code, Equals, 200)
 	c.Assert(r.ID, Equals, "1")
 
-	err = s.c.Delete(index, "1")
+	err = s.c.DeleteDocument(index, "1")
 	c.Assert(err, IsNil)
 
-	exists, err = s.c.Exists(index, "1")
+	exists, err = s.c.HasDocument(index, "1")
 	c.Assert(err, IsNil)
 	c.Assert(exists, Equals, false)
 
@@ -77,54 +77,15 @@ func (s *elasticTestSuite) TestSimple(c *C) {
 	_, err = s.c.Bulk(items)
 	c.Assert(err, IsNil)
 
-	// for i := range 10 {
-	// 	id := fmt.Sprintf("%d", i)
-	// 	req := new(BulkRequest)
-	// 	req.Action = ActionDelete
-	// 	req.ID = id
-	// 	items[i] = req
-	// }
+	for i := range 10 {
+		id := fmt.Sprintf("%d", i)
+		req := new(BulkRequest)
+		req.Action = ActionDelete
+		req.Index = index
+		req.ID = id
+		items[i] = req
+	}
+	_, err = s.c.Bulk(items)
+	c.Assert(err, IsNil)
 
 }
-
-// this requires a parent setting in _mapping
-// func (s *elasticTestSuite) TestParent(c *C) {
-// 	index := "dummy"
-// 	docType := "comment"
-// 	ParentType := "parent"
-
-// 	mapping := map[string]any{
-// 		docType: map[string]any{
-// 			"_parent": map[string]string{"type": ParentType},
-// 		},
-// 	}
-// 	err := s.c.CreateMapping(index, mapping)
-// 	c.Assert(err, IsNil)
-
-// 	items := make([]*BulkRequest, 10)
-
-// 	for i := 0; i < 10; i++ {
-// 		id := fmt.Sprintf("%d", i)
-// 		req := new(BulkRequest)
-// 		req.Action = ActionIndex
-// 		req.ID = id
-// 		req.Data = makeTestData(fmt.Sprintf("abc %d", i), fmt.Sprintf("hello world %d", i))
-// 		req.Parent = "1"
-// 		items[i] = req
-// 	}
-
-// 	for i := 0; i < 10; i++ {
-// 		id := fmt.Sprintf("%d", i)
-// 		req := new(BulkRequest)
-// 		req.Index = index
-
-// 		req.Action = ActionDelete
-// 		req.ID = id
-// 		req.Parent = "1"
-// 		items[i] = req
-// 	}
-// 	resp, err := s.c.Bulk(items)
-// 	c.Assert(err, IsNil)
-// 	c.Assert(resp.Code, Equals, 200)
-// 	c.Assert(resp.Errors, Equals, false)
-// }

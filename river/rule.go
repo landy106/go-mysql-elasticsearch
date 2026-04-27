@@ -1,6 +1,7 @@
 package river
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/go-mysql-org/go-mysql/schema"
@@ -70,10 +71,5 @@ func (r *Rule) CheckFilter(field string) bool {
 		return true
 	}
 
-	for _, f := range r.Filter {
-		if f == field {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(r.Filter, field)
 }

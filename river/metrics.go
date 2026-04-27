@@ -2,7 +2,6 @@ package river
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -34,19 +33,19 @@ var (
 			Help: "The canal slave running state: 0=stopped, 1=ok",
 		},
 	)
-	canalDelay = promauto.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "mysql2es_canal_delay",
-			Help: "The canal slave lag",
-		},
-	)
+	// canalDelay = promauto.NewGauge(
+	// 	prometheus.GaugeOpts{
+	// 		Name: "mysql2es_canal_delay",
+	// 		Help: "The canal slave lag",
+	// 	},
+	// )
 )
 
-func (r *River) collectMetrics() {
-	for range time.Tick(10 * time.Second) {
-		canalDelay.Set(float64(r.canal.GetDelay()))
-	}
-}
+// func (r *River) collectMetrics() {
+// 	for range time.Tick(10 * time.Second) {
+// 		canalDelay.Set(float64(r.canal.GetDelay()))
+// 	}
+// }
 
 func InitStatus(addr string, path string) {
 	http.Handle(path, promhttp.Handler())

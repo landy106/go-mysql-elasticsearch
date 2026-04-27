@@ -67,13 +67,7 @@ func (s *riverTestSuite) setupExtra(c *C) (r *River) {
 	r, err = NewRiver(cfg)
 	c.Assert(err, IsNil)
 
-	mapping := map[string]any{
-		"river_extra": map[string]any{
-			"_parent": map[string]string{"type": "river_extra_parent"},
-		},
-	}
 
-	r.es.CreateMapping("river",  mapping)
 
 	return r
 }

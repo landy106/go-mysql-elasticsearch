@@ -21,7 +21,7 @@ type Client struct {
 	User     string
 	Password string
 
-	c *http.Client
+	httpClient *http.Client
 }
 
 // ClientConfig is the configuration for the client.
@@ -45,10 +45,10 @@ func NewClient(conf *ClientConfig) *Client {
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
-		c.c = &http.Client{Transport: tr}
+		c.httpClient = &http.Client{Transport: tr}
 	} else {
 		c.Protocol = "http"
-		c.c = &http.Client{}
+		c.httpClient = &http.Client{}
 	}
 
 	return c
@@ -56,9 +56,8 @@ func NewClient(conf *ClientConfig) *Client {
 
 // ResponseItem is the ES item in the response.
 type ResponseItem struct {
-	ID    string `json:"_id"`
-	Index string `json:"_index"`
-	// Type    string         `json:"_type"`
+	Index   string         `json:"_index"`
+	ID      string         `json:"_id"`
 	Version int            `json:"_version"`
 	Found   bool           `json:"found"`
 	Source  map[string]any `json:"_source"`
@@ -70,7 +69,7 @@ type Response struct {
 	ResponseItem
 }
 
-// See http://www.elasticsearch.org/guide/en/elasticsearch/guide/current/bulk.html
+// https://www.elastic.co/guide/en/elasticsearch/reference/8.17/docs-bulk.html
 const (
 	ActionCreate = "create"
 	ActionUpdate = "update"
@@ -82,10 +81,7 @@ const (
 type BulkRequest struct {
 	Action string
 	Index  string
-	// Type     string
-	ID       string
-	Parent   string
-	Pipeline string
+	ID     string
 
 	Data map[string]any
 }
@@ -93,22 +89,13 @@ type BulkRequest struct {
 func (r *BulkRequest) bulk(buf *bytes.Buffer) error {
 	meta := make(map[string]map[string]string)
 	metaData := make(map[string]string)
+
 	if len(r.Index) > 0 {
 		metaData["_index"] = r.Index
 	}
 
-	// if len(r.Type) > 0 {
-	// 	metaData["_type"] = r.Type
-	// }
-
 	if len(r.ID) > 0 {
 		metaData["_id"] = r.ID
-	}
-	if len(r.Parent) > 0 {
-		metaData["_parent"] = r.Parent
-	}
-	if len(r.Pipeline) > 0 {
-		metaData["pipeline"] = r.Pipeline
 	}
 
 	meta[r.Action] = metaData
@@ -161,7 +148,6 @@ type BulkResponse struct {
 // BulkResponseItem is the item in the bulk response.
 type BulkResponseItem struct {
 	Index   string          `json:"_index"`
-	Type    string          `json:"_type"`
 	ID      string          `json:"_id"`
 	Version int             `json:"_version"`
 	Result  string          `json:"result"`
@@ -169,42 +155,18 @@ type BulkResponseItem struct {
 	Error   json.RawMessage `json:"error"`
 }
 
-// MappingResponse is the response for the mapping request.
-type MappingResponse struct {
-	Code    int
-	Mapping Mapping
-}
-
-// Mapping represents ES mapping.
-//
-//	type Mapping map[string]struct {
-//		Mappings map[string]struct {
-//			Properties map[string]struct {
-//				Type   string `json:"type"`
-//				Fields any    `json:"fields"`
-//			} `json:"properties"`
-//		} `json:"mappings"`
-//	}
-type Mapping map[string]struct {
-	Mappings struct {
-		Properties map[string]struct {
-			Type   string `json:"type"`
-			Fields any    `json:"fields"`
-		} `json:"properties"`
-	} `json:"mappings"`
-}
-
 // DoRequest sends a request with body to ES.
 func (c *Client) DoRequest(method string, url string, body *bytes.Buffer) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, body)
-	req.Header.Add("Content-Type", "application/json")
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
+	req.Header.Add("Content-Type", "application/json")
+
 	if len(c.User) > 0 && len(c.Password) > 0 {
 		req.SetBasicAuth(c.User, c.Password)
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.httpClient.Do(req)
 
 	return resp, err
 }
@@ -257,7 +219,6 @@ func (c *Client) DoBulk(url string, items []*BulkRequest) (*BulkResponse, error)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-
 	defer resp.Body.Close()
 
 	ret := new(BulkResponse)
@@ -272,59 +233,6 @@ func (c *Client) DoBulk(url string, items []*BulkRequest) (*BulkResponse, error)
 		err = json.Unmarshal(data, &ret)
 	}
 
-	return ret, errors.Trace(err)
-}
-
-// CreateMapping creates a ES mapping.
-func (c *Client) CreateMapping(index string, mapping map[string]any) error {
-	reqURL := fmt.Sprintf("%s://%s/%s", c.Protocol, c.Addr,
-		url.QueryEscape(index))
-
-	r, err := c.Do("HEAD", reqURL, nil)
-	if err != nil {
-		return errors.Trace(err)
-	}
-
-	// if index doesn't exist, will get 404 not found, create index first
-	if r.Code == http.StatusNotFound {
-		_, err = c.Do("PUT", reqURL, nil)
-
-		if err != nil {
-			return errors.Trace(err)
-		}
-	} else if r.Code != http.StatusOK {
-		return errors.Errorf("Error: %s, code: %d", http.StatusText(r.Code), r.Code)
-	}
-
-	reqURL = fmt.Sprintf("%s://%s/%s/_mapping", c.Protocol, c.Addr, url.QueryEscape(index))
-
-	_, err = c.Do("POST", reqURL, mapping)
-	return errors.Trace(err)
-}
-
-// GetMapping gets the mapping.
-func (c *Client) GetMapping(index string) (*MappingResponse, error) {
-	reqURL := fmt.Sprintf("%s://%s/%s/_mapping", c.Protocol, c.Addr, url.QueryEscape(index))
-	buf := bytes.NewBuffer(nil)
-
-	resp, err := c.DoRequest("GET", reqURL, buf)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-	defer resp.Body.Close()
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-
-	ret := new(MappingResponse)
-	err = json.Unmarshal(data, &ret.Mapping)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-
-	ret.Code = resp.StatusCode
 	return ret, errors.Trace(err)
 }
 
@@ -345,8 +253,8 @@ func (c *Client) DeleteIndex(index string) error {
 	return errors.Errorf("Error: %s, code: %d", http.StatusText(r.Code), r.Code)
 }
 
-// Get gets the item by id.
-func (c *Client) Get(index string, id string) (*Response, error) {
+// GetDocument gets the item by id.
+func (c *Client) GetDocument(index string, id string) (*Response, error) {
 	reqURL := fmt.Sprintf("%s://%s/%s/_doc/%s", c.Protocol, c.Addr,
 		url.QueryEscape(index),
 		url.QueryEscape(id))
@@ -354,8 +262,8 @@ func (c *Client) Get(index string, id string) (*Response, error) {
 	return c.Do("GET", reqURL, nil)
 }
 
-// Index add or overwrite a document
-func (c *Client) Index(index string, id string, data map[string]any) error {
+// AddDocument add or overwrite a document
+func (c *Client) AddDocument(index string, id string, data map[string]any) error {
 	reqURL := fmt.Sprintf("%s://%s/%s/_doc/%s", c.Protocol, c.Addr,
 		url.QueryEscape(index),
 		url.QueryEscape(id))
@@ -372,34 +280,8 @@ func (c *Client) Index(index string, id string, data map[string]any) error {
 	return errors.Errorf("Error: %s, code: %d", http.StatusText(r.Code), r.Code)
 }
 
-// Update update a document
-func (c *Client) Update(index string, id string, data map[string]any) error {
-	reqURL := fmt.Sprintf("%s://%s/%s/_update/%s", c.Protocol, c.Addr,
-		url.QueryEscape(index),
-		url.QueryEscape(id))
-
-	doc := map[string]any{
-		"doc": data,
-	}
-	byt, err := json.Marshal(doc)
-	if err != nil {
-		return errors.Trace(err)
-	}
-
-	r, err := c.DoRequest("POST", reqURL, bytes.NewBuffer(byt))
-	if err != nil {
-		return errors.Trace(err)
-	}
-
-	if r.StatusCode == http.StatusOK || r.StatusCode == http.StatusCreated {
-		return nil
-	}
-
-	return errors.Errorf("Error: %s, code: %d", http.StatusText(r.StatusCode), r.StatusCode)
-}
-
-// Exists checks whether id exists or not.
-func (c *Client) Exists(index string, id string) (bool, error) {
+// HasDocument checks whether id exists or not.
+func (c *Client) HasDocument(index string, id string) (bool, error) {
 	reqURL := fmt.Sprintf("%s://%s/%s/_doc/%s", c.Protocol, c.Addr,
 		url.QueryEscape(index),
 		url.QueryEscape(id))
@@ -412,8 +294,8 @@ func (c *Client) Exists(index string, id string) (bool, error) {
 	return r.Code == http.StatusOK, nil
 }
 
-// Delete deletes the document by id.
-func (c *Client) Delete(index string, id string) error {
+// DeleteDocument deletes the document by id.
+func (c *Client) DeleteDocument(index string, id string) error {
 	reqURL := fmt.Sprintf("%s://%s/%s/_doc/%s", c.Protocol, c.Addr,
 		url.QueryEscape(index),
 		url.QueryEscape(id))

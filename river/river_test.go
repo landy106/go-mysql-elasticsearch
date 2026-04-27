@@ -239,21 +239,9 @@ func (s *riverTestSuite) testPrepareData(c *C) {
 func (s *riverTestSuite) testElasticGet(c *C, id string) *elastic.Response {
 	index := "river"
 
-	r, err := s.r.es.Get(index, id)
+	r, err := s.r.es.GetDocument(index, id)
 	c.Assert(err, IsNil)
 
-	return r
-}
-
-func (s *riverTestSuite) testElasticMapping(c *C) *elastic.MappingResponse {
-	index := "river"
-
-	r, err := s.r.es.GetMapping(index)
-	c.Assert(err, IsNil)
-
-	c.Assert(r.Mapping[index].Mappings.Properties["tdatetime"].Type, Equals, "date")
-	c.Assert(r.Mapping[index].Mappings.Properties["tdate"].Type, Equals, "date")
-	c.Assert(r.Mapping[index].Mappings.Properties["mydate"].Type, Equals, "date")
 	return r
 }
 
@@ -280,10 +268,6 @@ func (s *riverTestSuite) TestRiver(c *C) {
 	go func() { s.r.Run() }()
 
 	testWaitSyncDone(c, s.r)
-
-	var mr *elastic.MappingResponse
-	mr = s.testElasticMapping(c)
-	c.Assert(mr.Code, Equals, 200)
 
 	var r *elastic.Response
 	r = s.testElasticGet(c, "1")

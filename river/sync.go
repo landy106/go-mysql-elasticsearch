@@ -184,18 +184,13 @@ func (r *River) makeRequest(rule *Rule, action string, rows [][]any) ([]*elastic
 			return nil, errors.Trace(err)
 		}
 
-		parentID := ""
-		if len(rule.Parent) > 0 {
-			if parentID, err = r.getParentID(rule, values, rule.Parent); err != nil {
-				return nil, errors.Trace(err)
-			}
-		}
+
+
 
 		req := &elastic.BulkRequest{
 			Index: rule.Index, 
 			ID: id, 
-			Parent: parentID, 
-			Pipeline: rule.Pipeline,
+
 		}
 
 		if action == canal.DeleteAction {
@@ -234,7 +229,6 @@ func (r *River) makeUpdateRequest(rule *Rule, rows [][]any) ([]*elastic.BulkRequ
 		}
 
 		afterID, err := r.getDocID(rule, rows[i+1])
-
 		if err != nil {
 			return nil, errors.Trace(err)
 		}
@@ -249,13 +243,13 @@ func (r *River) makeUpdateRequest(rule *Rule, rows [][]any) ([]*elastic.BulkRequ
 			}
 		}
 
-		req := &elastic.BulkRequest{Index: rule.Index, ID: beforeID, Parent: beforeParentID}
+		req := &elastic.BulkRequest{Index: rule.Index, ID: beforeID}
 
 		if beforeID != afterID || beforeParentID != afterParentID {
 			req.Action = elastic.ActionDelete
 			reqs = append(reqs, req)
 
-			req = &elastic.BulkRequest{Index: rule.Index, ID: afterID, Parent: afterParentID, Pipeline: rule.Pipeline}
+			req = &elastic.BulkRequest{Index: rule.Index, ID: afterID}
 			r.makeInsertReqData(req, rule, rows[i+1])
 
 			esDeleteNum.WithLabelValues(rule.Index).Inc()
@@ -266,7 +260,6 @@ func (r *River) makeUpdateRequest(rule *Rule, rows [][]any) ([]*elastic.BulkRequ
 				r.makeInsertReqData(req, rule, rows[i+1])
 				// Make sure action is index, not create
 				req.Action = elastic.ActionIndex
-				req.Pipeline = rule.Pipeline
 			} else {
 				r.makeUpdateReqData(req, rule, rows[i], rows[i+1])
 			}
@@ -486,8 +479,8 @@ func (r *River) doBulk(reqs []*elastic.BulkRequest) error {
 		for i := 0; i < len(resp.Items); i++ {
 			for action, item := range resp.Items[i] {
 				if len(item.Error) > 0 {
-					log.Errorf("%s index: %s, type: %s, id: %s, status: %d, error: %s",
-						action, item.Index, item.Type, item.ID, item.Status, item.Error)
+					log.Errorf("%s index: %s,  id: %s, status: %d, error: %s",
+						action, item.Index,  item.ID, item.Status, item.Error)
 				}
 			}
 		}
